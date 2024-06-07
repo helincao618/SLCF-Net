@@ -24,7 +24,7 @@ If you find this work or code useful, please cite our [paper](https://arxiv.org/
 - [Preparing](#preparing)
   - [Installation](#installation)  
   - [Datasets](#datasets)
-- [Running MonoScene](#running-monoscene)
+- [Running SLCF-Net](#running-slcfnet)
   - [Training](#training)
   - [Evaluating](#evaluating)
 - [Inference & Visualization](#inference--visualization)
@@ -85,7 +85,7 @@ $ export KITTI_ROOT=/path/to/semantic_kitti
 
 
 
-# Running MonoScene
+# Running SLCF-Net
 
 ## Training
 
