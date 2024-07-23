@@ -8,7 +8,7 @@
     <br />
     <strong>ICRA 2024</strong>
     <br />
-    <a>[![arXiv](https://img.shields.io/badge/arXiv%20%2B%20supp-2112.00726-purple)](https://arxiv.org/abs/2403.08885)</a> | <a>[![Project page](https://img.shields.io/badge/Project%20Page-MonoScene-red)](https://sites.google.com/view/slcf-net)</a>
+    <a href="https://arxiv.org/abs/2403.08885">Arxiv</a> | <a href="https://sites.google.com/view/slcf-net">Project page</a>
     <br />
   </p>
 </div>
