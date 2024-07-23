@@ -1,32 +1,19 @@
 """
 Preprocess the Semantic Kitti dataset to generate the following files:
-    -depthmask: depth mask for each frame
-    -semanticmask: semantic mask for each frame
     -sparsedepthmask: sparse depth mask for each frame
     -depthimage: depth image for each frame
-    -semanticimage: semantic image for each frame
-    -label: label for each frame with scale 1/1, 1/2, 1/4, 1/8
-    -invalid: invalid mask for each frame with scale 1/1, 1/2, 1/4, 1/8
+    -label: label for each frame with scale 1/1, 1/8
+    -invalid: invalid mask for each frame with scale 1/1, 1/8
 
 This code is based on the original Semantic Kitti dataset preprocessing code
-
-Author: Helin Cao
-Date: YYYY-MM-DD
-License: MIT License (or any other license you want to use)
 """
 import glob
-import math
 import os
 import sys
 import yaml
-import hydra
 import numpy as np
-from omegaconf import DictConfig
-from hydra.utils import get_original_cwd
-from PIL import Image
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from dvis import dvis
 
 repo_path, _ = os.path.split(os.path.realpath(__file__))
 repo_path, _ = os.path.split(repo_path)
@@ -114,37 +101,29 @@ def dot(transform, pts):
         pts = np.concatenate([pts,np.ones((len(pts),1))],1)
     return (transform @ pts.T).T
 
-def project_size(depth):
-    return math.ceil(3000/(depth+15)**2)
+# def img2point(u, v, d, P):
+#     # Create a homogeneous image coordinate
+#     uv1 = np.array([u, v, 1])
+#     # Compute the homogeneous 3D point in camera coordinates
+#     X_c = np.linalg.pinv(P) @ (d * uv1)
+#     # Normalize the homogeneous coordinate by dividing by the last element
+#     X_c /= X_c[-1]
+#     return X_c[:-1]
 
-def img2point(u, v, d, P):
-    # Create a homogeneous image coordinate
-    uv1 = np.array([u, v, 1])
-    # Compute the homogeneous 3D point in camera coordinates
-    X_c = np.linalg.pinv(P) @ (d * uv1)
-    # Normalize the homogeneous coordinate by dividing by the last element
-    X_c /= X_c[-1]
-    return X_c[:-1]
+def load_config(config_path):
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
 
-def filter_outside_points(valid_labels, pos_img, imgw, imgh):
-    # chop off the points that are outside the image
-    valid_labels = valid_labels[pos_img[:, 0] > 0]
-    pos_img = pos_img[pos_img[:, 0] > 0]
-
-    valid_labels = valid_labels[pos_img[:, 0] < imgw]
-    pos_img = pos_img[pos_img[:, 0] < imgw]
-
-    valid_labels = valid_labels[pos_img[:, 1] > 0]
-    pos_img = pos_img[pos_img[:, 1] > 0]
-
-    valid_labels = valid_labels[pos_img[:, 1] < imgh]
-    pos_img = pos_img[pos_img[:, 1] < imgh]
-
-    return valid_labels, pos_img
-
-# Main function
-@hydra.main(config_name='../config/slcfnet.yaml')
-def main(config: DictConfig):
+def main():
+    config_slcfnet_path = os.path.join(
+        'SLCF-Net','slcfnet','config','slcfnet.yaml'
+        )
+    config_kitti_path = os.path.join(
+        'SLCF-Net','slcfnet','config','semantic-kitti.yaml'
+        )
+    config_slcfnet = load_config(config_slcfnet_path)
+    remap_lut = SemanticKittiIO.get_remap_lut(config_kitti_path)
     splits = {
         'train': ['00', '01', '02', '03', '04', '05', '06', '07'],
         'val': ['09','10'],
@@ -152,26 +131,16 @@ def main(config: DictConfig):
     }
     scene_size =[256, 256, 32]
     imgh, imgw = 376, 1241
-    split = 'train'
+    split = 'val'
     sequences = splits[split]
-    config_path = os.path.join(
-            get_original_cwd(),
-            'SFCNet',
-            'SFCNet',
-            'config',
-            'semantic-kitti.yaml',
-        )
-    remap_lut = SemanticKittiIO.get_remap_lut(config_path)
 
-    # Loop through sequences
     for sequence in sequences:
-        
         # Read paths and store in lists
         voxel_path = os.path.join(
-            config.kitti_voxel_root, 'dataset', 'sequences', sequence
+            config_slcfnet['kitti_voxel_root'], 'dataset', 'sequences', sequence
         )
         velodyne_path = os.path.join(
-            config.kitti_pointcloud_root, 'dataset', 'sequences', sequence,
+            config_slcfnet['kitti_pointcloud_root'], 'dataset', 'sequences', sequence,
         )
         if split == 'train' or split == 'val':
             label_paths = sorted(
@@ -181,15 +150,10 @@ def main(config: DictConfig):
                 glob.glob(os.path.join(voxel_path, 'voxels', '*.invalid'))
             )
             # Create output directories
-            label_outdir = os.path.join(config.kitti_preprocess_root, sequence, 'labels')
-            invalid_outdir = os.path.join(config.kitti_preprocess_root, sequence, 'invalid')
-            semanticimg_outdir = os.path.join(config.kitti_preprocess_root, sequence, 'semanticimg')
-            semanticmask_outdir = os.path.join(config.kitti_preprocess_root, sequence, 'semanticmask')
+            label_outdir = os.path.join(config_slcfnet['kitti_preprocess_root'], sequence, 'labels')
+            invalid_outdir = os.path.join(config_slcfnet['kitti_preprocess_root'], sequence, 'invalid')
             os.makedirs(label_outdir, exist_ok=True)
             os.makedirs(invalid_outdir, exist_ok=True)
-            os.makedirs(semanticimg_outdir, exist_ok=True)
-            os.makedirs(semanticmask_outdir, exist_ok=True)
-
         pts_paths = sorted(
             glob.glob(os.path.join(velodyne_path, 'velodyne', '*.bin'))
         )
@@ -199,13 +163,12 @@ def main(config: DictConfig):
         T_velo_2_cam = calib['Tr']
 
         # Create output directories
-        sparsedepthmask_outdir = os.path.join(config.kitti_preprocess_root, sequence, 'sparsedepthmask')
+        sparsedepthmask_outdir = os.path.join(config_slcfnet['kitti_preprocess_root'], sequence, 'sparsedepthmask')
         os.makedirs(sparsedepthmask_outdir, exist_ok=True)
 
         for i in tqdm(range((len(pts_paths)-1)//5+1)):
             frame_id, extension = os.path.splitext(os.path.basename(pts_paths[5*i]))
             ## Semantic and depth mask and image
-            # initialize image and mask
             sparsedepthmask = np.ones([imgh,imgw], dtype = int)*200
             # point cloud from velodyne
             pose_velo = np.linalg.inv(T_velo_2_cam).dot(poses[5*i].dot(T_velo_2_cam))
@@ -231,8 +194,6 @@ def main(config: DictConfig):
                         LABEL_ds, INVALID_ds = _downsample_label(LABEL, INVALID, scene_size, scale)
                         np.save(label_filename, LABEL_ds)
                         np.save(invalid_filename, INVALID_ds)
-                        # print('wrote to', label_filename)
-                        # print('wrote to', invalid_filename)
             
             # generate sparse depth mask fuse 5 frame
             fused_scan_global = np.array([[0,0,0,0]])
@@ -252,9 +213,7 @@ def main(config: DictConfig):
             pos_img_scans = pos_img_scans[pos_img_scans[:, 1] > 0]
             pos_img_scans = pos_img_scans[pos_img_scans[:, 1] < imgh]
             for idx, pos_img_scan in enumerate(pos_img_scans):
-                # sparsedepthmask[(int(pos_img_scan[1])-1):(int(pos_img_scan[1])+1),(int(pos_img_scan[0])-1):(int(pos_img_scan[0])+1)] = pos_img_scan[2]
                 sparsedepthmask[int(pos_img_scan[1]),int(pos_img_scan[0])] = pos_img_scan[2]
-            # save the mask array
             np.save(sparsedepthmask_outdir +'/'+ frame_id +'.npy',sparsedepthmask.astype(np.float32))
             # draw on img
             # cmap = plt.cm.jet

@@ -13,7 +13,7 @@ repo_path, _ = os.path.split(repo_path)
 sys.path.append(repo_path)
 from data.semantic_kitti.io_data import read_poses_SemKITTI
 
-SEQ = ['08','11','12','13','14','15','16','17','18','19','20','21'] 
+SEQ = ['08']  # set the seq you want to visualize
 
 def parse_args():
     '''PARAMETERS'''
@@ -38,7 +38,7 @@ def process_scene_coords(target, pose_velo, color_map, learning_map_inv, fov_mas
     vox2scene[:3, :3] = np.diag([1/5, 1/5, 1/5])
     vox2scene[:3, 3] = np.array([-25.5, -25.5, -1.9])#np.array([0.1, -25.5, -1.9])
     valid_scene_coords = dot(vox2scene, valid_label_inds)
-    valid_scene_coords_global = valid_scene_coords[:, :3]#.dot(pose_velo.T)[:, :3] #
+    valid_scene_coords_global = valid_scene_coords[:, :3]#.dot(pose_velo.T)[:, :3]
 
     valid_colors = np.zeros((len(valid_scene_coords), 3))
     for label in np.unique(valid_labels):
@@ -59,28 +59,31 @@ def process_scene_coords(target, pose_velo, color_map, learning_map_inv, fov_mas
     valid_scene_coords_col_unknown = valid_scene_coords_col[valid_unknown_mask == 1]
     return valid_scene_coords_col_known, valid_scene_coords_col_unknown
 
+def load_config(config_path):
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
 
 def main():
-    preprocess_root = 'kitti_preprocess/'
+    config_slcfnet_path = os.path.join(
+        'SLCF-Net','slcfnet','config','slcfnet.yaml'
+        )
+    config_slcfnet = load_config(config_slcfnet_path)
+    preprocess_root = os.path.join(config_slcfnet['kitti_preprocess_root'])
+    output_path = os.path.join(config_slcfnet['output_path'])
+    config_kitti_path = os.path.join('SLCF-Net', 'slcfnet', 'config', 'semantic-kitti.yaml')
+    config_kitti = yaml.safe_load(open(config_kitti_path))
+    color_map = config_kitti['color_map']
+    learning_map_inv = config_kitti['learning_map_inv']
     args = parse_args()
     for seq in SEQ[:1]:
-        
-        semetickitti_config_path = os.path.join('SFCNet', 'SFCNet', 'config', 'semantic-kitti.yaml')
-        semetickitti_config = yaml.safe_load(open(semetickitti_config_path))
-        color_map = semetickitti_config['color_map']
-        learning_map_inv = semetickitti_config['learning_map_inv']
-        sfc_config_path = os.path.join('SFCNet', 'SFCNet', 'config', 'sfc.yaml')
-        sfc_config = yaml.safe_load(open(sfc_config_path))
-        data_path = os.path.join('outputs', 'sfc_output', sfc_config['dataset'], seq)
-        path_poses = os.path.join('dataset', 'sequences', seq, 'poses.txt')
+        data_path = os.path.join(output_path, seq)
+        path_poses = os.path.join(config_slcfnet['kitti_pointcloud_root'], 'dataset', 'sequences', seq, 'poses.txt')
         poses = read_poses_SemKITTI(path_poses)
         volume_colors = np.array([[0,0,0,0,0,0]])
-        
-        startframe = 480
-        endframe = 730#len(poses)
-        bestframe = [485, 775, 905, 1680]
+        startframe = 0
+        endframe = len(poses)
         for i in tqdm(range(startframe, endframe,5)):
-        # for idx, i in tqdm(enumerate(bestframe)):
             path_labels = os.path.join(data_path, "{:06}.pkl".format(i))
             unknown_path = os.path.join(preprocess_root, seq, 'invalid' , "{:06}".format(i) + '_1.npy')
             unknown_mask = np.load(unknown_path).reshape(256,256,32)

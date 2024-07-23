@@ -1,6 +1,6 @@
 import torch
 
-def collate_fn(batch):#batch[({},{})*batchsize] in train [{}*batchsize] in val and test
+def collate_fn(batch):
     len_seq = len(batch[0])
     if len_seq == 2: # train
         batch_now = [batch[0][0]] 
@@ -13,11 +13,10 @@ def collate_fn(batch):#batch[({},{})*batchsize] in train [{}*batchsize] in val a
         return ret_data
 
 
-def collate_fn_single(batch):#[{}]
+def collate_fn_single(batch):
     data = {}
     imgs = []
     sparsedepthmasks = []
-    semanticmasks = []
     CP_mega_matrices = []
     targets_1_1 = []
     frame_ids = []
@@ -52,7 +51,6 @@ def collate_fn_single(batch):#[{}]
         if input_dict['split'] != 'test':
             frustums_masks.append(torch.from_numpy(input_dict['frustums_masks']))
             frustums_class_dists.append(torch.from_numpy(input_dict['frustums_class_dists']).float())
-            semanticmasks.append(torch.from_numpy(input_dict['semanticmask']))
             targets_1_1.append(torch.from_numpy(input_dict['target_1_1']))
             CP_mega_matrices.append(torch.from_numpy(input_dict['CP_mega_matrix']))
 
@@ -66,7 +64,6 @@ def collate_fn_single(batch):#[{}]
                 'T_velo_2_cam': T_velo_2_cams,
                 'img': torch.stack(imgs),
                 'sparsedepthmask': torch.stack(sparsedepthmasks),
-                'semanticmask': torch.stack(semanticmasks),
                 'CP_mega_matrices': CP_mega_matrices,
                 'target_1_1': torch.stack(targets_1_1),
             }
@@ -79,7 +76,6 @@ def collate_fn_single(batch):#[{}]
                 'T_velo_2_cam': T_velo_2_cams,
                 'img': torch.stack(imgs),
                 'sparsedepthmask': torch.stack(sparsedepthmasks),
-                # 'target_1_1': torch.stack(targets_1_1),
             }
         
     for key in data:

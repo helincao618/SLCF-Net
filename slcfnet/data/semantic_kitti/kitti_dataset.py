@@ -19,7 +19,6 @@ class KittiDataset(Dataset):
         split,
         voxel_root,
         preprocess_root,
-        # project_scale=2,
         frustum_size=4,
         color_jitter=None,
         fliplr=0.0,
@@ -170,10 +169,6 @@ class KittiDataset(Dataset):
                 n_classes=20,
                 size=self.frustum_size,
             )
-            #semantic mask as gt
-            semanticmask_path = os.path.join(self.preprocess_root, sequence, 'semanticmask', frame_id + '.npy')
-            semanticmask = np.load(semanticmask_path)[:370, :1220]
-            data['semanticmask'] = semanticmask
         else:
             frustums_masks = None
             frustums_class_dists = None
@@ -202,7 +197,6 @@ class KittiDataset(Dataset):
         if np.random.rand() < self.fliplr:
             img = np.ascontiguousarray(np.fliplr(img))
             sparsedepthmask = np.ascontiguousarray(np.fliplr(sparsedepthmask))
-            semanticmask = np.ascontiguousarray(np.fliplr(semanticmask))
             for scale in scale_3ds:
                 key = 'projected_pix_' + str(scale)
                 data[key][:, 0] = img.shape[1] - 1 - data[key][:, 0]

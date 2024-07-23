@@ -1,12 +1,12 @@
 n_relations: 4
 
 enable_log: true
-kitti_pointcloud_root: '/home/nfs/inf6/data/datasets/SemanticKitti/' #'/path/to/semantic_kitti'
-kitti_voxel_root: '../../../'
-kitti_preprocess_root: '../../../kitti_preprocess/' #'/path/to/kitti/preprocess/folder'
-kitti_logdir: '../../../kitti_logdir/' #'/path/to/semantic_kitti/logdir'
+kitti_pointcloud_root: 'SemanticKitti/' #'/path/to/semantic_kitti'
+kitti_voxel_root: 'SemanticKitti/'
+kitti_preprocess_root: 'SLCF-Net/var/kitti_preprocess/' #'/path/to/kitti/preprocess/folder'
+kitti_logdir: 'SLCF-Net/var/kitti_logdir/' #'/path/to/semantic_kitti/logdir'
 
-output_path: '../../slcfnet_output/'
+output_path: 'SLCF-Net/var/slcfnet_output/'
 
 fp_loss: true 
 frustum_size: 8 

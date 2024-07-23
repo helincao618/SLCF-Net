@@ -9,7 +9,7 @@ from models.unet2d import UNet2D
 from models.unet3d import UNet3D
 from loss.CRP_loss import compute_super_CP_multilabel_loss
 from loss.sscMetrics import SSCMetrics
-from loss.ssc_loss import sem_scal_loss, CE_ssc_loss, KL_sep, geo_scal_loss, inter_frame_loss
+from loss.ssc_loss import CE_ssc_loss, KL_sep, geo_scal_loss, inter_frame_loss
 
 
 class SLCFNet(pl.LightningModule):
@@ -21,7 +21,6 @@ class SLCFNet(pl.LightningModule):
         class_weights,
         project_scale,
         full_scene_size,
-        dataset,
         context_prior=True,
         fp_loss=True,
         frustum_size=4,
@@ -38,7 +37,6 @@ class SLCFNet(pl.LightningModule):
         super().__init__()
         self.project_res = project_res
         self.project_scale = project_scale
-        self.dataset = dataset
         self.context_prior = context_prior
         self.frustum_size = frustum_size
         self.class_names = class_names
@@ -128,7 +126,6 @@ class SLCFNet(pl.LightningModule):
             "overlap_mask_4": torch.stack(overlap_mask_4s),
             }
         out = self.net_3d_decoder(input_dict)
-        # out["imgsem_logit"] = imgsem_pred
         return out
 
     def step(self, batch, step_type, metric):
@@ -158,15 +155,6 @@ class SLCFNet(pl.LightningModule):
             self.log(
                 step_type + '/loss_ssc',
                 loss_ssc.detach(),
-                on_epoch=True,
-                sync_dist=True,
-            )
-        if self.sem_scal_loss:
-            loss_sem_scal = sem_scal_loss(ssc_pred, target)
-            loss += loss_sem_scal
-            self.log(
-                step_type + '/loss_sem_scal',
-                loss_sem_scal.detach(),
                 on_epoch=True,
                 sync_dist=True,
             )
